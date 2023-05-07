@@ -71,12 +71,12 @@ func recv(conn *amqp.Connection, queueName string, updatFunc func(message []byte
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
-		"",        // consumer
-		true,      // auto-ack
-		false,     // exclusive
-		false,     // no-local
-		false,     // no-wait
-		nil,       // args
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
 	)
 
 	failOnError(err, "Failed to register a consumer")
@@ -92,5 +92,4 @@ func recv(conn *amqp.Connection, queueName string, updatFunc func(message []byte
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
-
 }

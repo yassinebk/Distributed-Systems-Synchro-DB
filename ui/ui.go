@@ -127,8 +127,6 @@ func CreateApp(title string, tableData *[]db.Product, productRepo *db.ProductSal
 	data := ConvertDataToDb(tableData)
 
 	// fmt.Println(data)
-	fmt.Println(len(data), len(data[0]))
-	fmt.Println("--------------------------------------------------------------")
 
 	// Create a table widget for the main body
 	table := widget.NewTable(
@@ -140,7 +138,6 @@ func CreateApp(title string, tableData *[]db.Product, productRepo *db.ProductSal
 			return x
 		},
 		func(i widget.TableCellID, o fyne.CanvasObject) {
-			fmt.Println(i.Row, i.Col)
 			o.(*widget.Label).SetText(data[i.Row][i.Col])
 		},
 	)
