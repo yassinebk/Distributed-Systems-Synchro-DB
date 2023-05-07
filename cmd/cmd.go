@@ -37,19 +37,40 @@ func Setup() cli.App {
 		Name:     "SyncDB-Super!",
 		Before:   printASCIIArt,
 		Commands: []*cli.Command{},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "seed",
+				Value: false,
+				Usage: "Seed database or not",
+			},
+			&cli.StringFlag{
+				Name:     "whoami",
+				Value:    "OH",
+				Usage:    "Specify which branch you are OH,BH1,BH2",
+				Required: true,
+			},
+		},
+
 		Action: func(ctx *cli.Context) error {
-			err := db.SeedDB("test-db.sqlite")
-			if err != nil {
-				return err
+
+			if ctx.Bool("seed") {
+				err := db.SeedDB("test-db.sqlite")
+				if err != nil {
+					log.Panicln("[-] Error seeding database", err)
+				}
 			}
 
 			dbConnection, err := db.ConnectToDb("test-db.sqlite")
+
+			if err != nil {
+				log.Panicln("[-] Error connecting to database", err)
+			}
 
 			productsRepo := db.NewProductSalesRepo(dbConnection)
 
 			products := productsRepo.FindAll()
 
-			ui.CreateApp("Default app", &products, &productsRepo)
+			ui.CreateApp(ctx.String("whoami"), &products, &productsRepo)
 			return nil
 		},
 	}

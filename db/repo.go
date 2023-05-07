@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"log"
 
 	"gorm.io/gorm"
@@ -77,4 +78,10 @@ func (p *ProductSalesRepo) DeleteProduct(productId int) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (p *ProductSalesRepo) BatchUpsert(products []Product) error {
+
+	fmt.Println("Updating products on local database")
+	return nil
 }
