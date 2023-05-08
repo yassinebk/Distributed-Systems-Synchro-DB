@@ -90,3 +90,26 @@ func RecvDataFromTheWire(whoami string, updateUi func()) {
 	})
 
 }
+
+func SendProductsToHO(products []db.Product, whoami string) {
+
+	connection := connect()
+
+	queueName := fmt.Sprintf("%s-to-ho", whoami)
+
+	for _, product := range products {
+		toSendMessage := SentMessage{
+			Product:   product,
+			Status:    "create",
+			Timestamp: time.Now(),
+		}
+
+		jsonData, err := json.Marshal(&toSendMessage)
+		if err != nil {
+			log.Panicln("[-] Error marshelling data - products ")
+		}
+
+		go send(connection, queueName, jsonData)
+	}
+
+}

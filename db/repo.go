@@ -34,6 +34,19 @@ func (p *ProductSalesRepo) FindAll() []Product {
 	return products
 }
 
+func (p *ProductSalesRepo) FindAllNotSent() []Product {
+	var products []Product
+	res := p.db.Where("sent = ? OR sent IS NULL", false).Find(&products)
+
+	// log.Println("[+] p.findAllNotSent - ", res.RowsAffected, "rows affected")
+
+	if res.Error != nil {
+		log.Panicln("[-] p.findAll - Error retrieving products sales from database")
+	}
+
+	return products
+}
+
 func (p *ProductSalesRepo) FindOne(id int) *Product {
 	var product Product
 

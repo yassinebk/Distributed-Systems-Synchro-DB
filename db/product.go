@@ -15,6 +15,7 @@ type Product struct {
 	Qty       uint32         `json:"qty"`
 	Cost      float32        `json:"cost"`
 	Tax       float32        `json:"tax"`
+	Sent      bool           `json:"sent"`
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`

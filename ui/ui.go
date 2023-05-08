@@ -132,23 +132,13 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 
 	// Create a button widget for the sidebar
 	sidebarButton := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
-		product := db.Product{
-			Date:    time.Now(),
-			Product: "Product",
-			Region:  "Region",
-			Qty:     11,
-			Cost:    0,
-			Tax:     0,
-		}
-		createdProduct, err := (*productRepo).CreateProduct(product)
-		if err != nil {
-			triggerError("Error creating new Product", myWindow)
-			return
+		notSentProducts := (*productRepo).FindAllNotSent()
+
+		// log.Println("Not sent products", notSentProducts)
+		if len(notSentProducts) > 0 {
+			shared.SendProductsToHO(notSentProducts, whoami)
 		}
 
-		*tableData = append(*tableData, createdProduct)
-		data = ConvertDataToDb(tableData)
-		myWindow.Canvas().Refresh(table)
 	})
 
 	// Create a VBox container for the sidebar
@@ -160,15 +150,18 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 	// Create a label widget for the main body
 	mainLabel := widget.NewLabel("Welcome to your workspace name")
 
-	shared.RecvDataFromTheWire(whoami, func() {
-		// TODO : Get the data from the database
+	go func() {
 
-		// Creating a new data array
-		data = ConvertDataToDb(tableData)
-		// Create a table widget for the main body
-		myWindow.Canvas().Refresh(table)
+		shared.RecvDataFromTheWire(whoami, func() {
 
-	})
+			tempData := (*productRepo).FindAll()
+			data = ConvertDataToDb(&tempData)
+
+			// Create a table widget for the main body
+			myWindow.Canvas().Refresh(table)
+
+		})
+	}()
 
 	// Create an HBox container for the main body
 	tableCtr := container.NewVScroll(table)
