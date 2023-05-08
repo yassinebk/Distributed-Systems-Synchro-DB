@@ -14,5 +14,4 @@ func main() {
 		log.Panicln("[-] error launching the app")
 	}
 
-	return
 }

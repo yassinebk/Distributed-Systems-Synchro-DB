@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"synchro-db/db"
+	"synchro-db/shared"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -102,31 +103,12 @@ func showForm(app *fyne.App, productRepo *db.ProductSalesRepo) {
 
 }
 
-func CreateApp(title string, tableData *[]db.Product, productRepo *db.ProductSalesRepo) {
+func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSalesRepo) {
 
 	myApp := app.New()
 	myWindow := myApp.NewWindow("DB Synchronizer")
 
-	// Create a label widget for the sidebar
-	sidebarLabel := widget.NewLabel("Welcome to DB Synchronizer")
-
-	// Create a button widget for the sidebar
-	sidebarButton := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
-		// Handle button click event here
-	})
-
-	// Create a VBox container for the sidebar
-	sidebar := container.NewVBox(
-		sidebarLabel,
-		sidebarButton,
-	)
-
-	// Create a label widget for the main body
-	mainLabel := widget.NewLabel("Welcome to your workspace name")
-
 	data := ConvertDataToDb(tableData)
-
-	// fmt.Println(data)
 
 	// Create a table widget for the main body
 	table := widget.NewTable(
@@ -145,6 +127,49 @@ func CreateApp(title string, tableData *[]db.Product, productRepo *db.ProductSal
 		table.SetColumnWidth(id, float32(120))
 	}
 
+	// Create a label widget for the sidebar
+	sidebarLabel := widget.NewLabel("Welcome to DB Synchronizer")
+
+	// Create a button widget for the sidebar
+	sidebarButton := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
+		product := db.Product{
+			Date:    time.Now(),
+			Product: "Product",
+			Region:  "Region",
+			Qty:     11,
+			Cost:    0,
+			Tax:     0,
+		}
+		createdProduct, err := (*productRepo).CreateProduct(product)
+		if err != nil {
+			triggerError("Error creating new Product", myWindow)
+			return
+		}
+
+		*tableData = append(*tableData, createdProduct)
+		data = ConvertDataToDb(tableData)
+		myWindow.Canvas().Refresh(table)
+	})
+
+	// Create a VBox container for the sidebar
+	sidebar := container.NewVBox(
+		sidebarLabel,
+		sidebarButton,
+	)
+
+	// Create a label widget for the main body
+	mainLabel := widget.NewLabel("Welcome to your workspace name")
+
+	shared.RecvDataFromTheWire(whoami, func() {
+		// TODO : Get the data from the database
+
+		// Creating a new data array
+		data = ConvertDataToDb(tableData)
+		// Create a table widget for the main body
+		myWindow.Canvas().Refresh(table)
+
+	})
+
 	// Create an HBox container for the main body
 	tableCtr := container.NewVScroll(table)
 	tableCtr.SetMinSize(fyne.NewSize(600, 500))
@@ -159,6 +184,8 @@ func CreateApp(title string, tableData *[]db.Product, productRepo *db.ProductSal
 	myWindow.SetContent(split)
 
 	// Show the window
+
+	// Blocking
 	myWindow.ShowAndRun()
 
 }

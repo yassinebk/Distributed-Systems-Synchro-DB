@@ -45,22 +45,22 @@ func Setup() cli.App {
 			},
 			&cli.StringFlag{
 				Name:     "whoami",
-				Value:    "OH",
+				Value:    "HO",
 				Usage:    "Specify which branch you are OH,BH1,BH2",
 				Required: true,
 			},
 		},
 
 		Action: func(ctx *cli.Context) error {
-
+			whoami := ctx.String("whoami") + ".sqlite"
 			if ctx.Bool("seed") {
-				err := db.SeedDB("test-db.sqlite")
+				err := db.SeedDB(whoami) //
 				if err != nil {
 					log.Panicln("[-] Error seeding database", err)
 				}
 			}
 
-			dbConnection, err := db.ConnectToDb("test-db.sqlite")
+			dbConnection, err := db.ConnectToDb(whoami) //
 
 			if err != nil {
 				log.Panicln("[-] Error connecting to database", err)

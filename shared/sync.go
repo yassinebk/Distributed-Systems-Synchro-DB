@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"synchro-db/db"
+	"time"
 )
 
 func syncDB(message []byte, dbName string) error {
@@ -24,27 +25,27 @@ func syncDB(message []byte, dbName string) error {
 		log.Panicln("[-] Error while parsing data from the wire. Check it", message)
 	}
 
-	switch receivedMessage.status {
+	switch receivedMessage.Status {
 	case "delete":
-		_, err := productsRepo.DeleteProduct(int(receivedMessage.product.ID))
+		_, err := productsRepo.DeleteProduct(int(receivedMessage.Product.ID))
 
 		if err != nil {
-			fmt.Println("[-] Error syncing db - operation delete - row", receivedMessage.product)
+			fmt.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
 		}
 		break
 	case "create":
-		newProduct, err := productsRepo.CreateProduct(receivedMessage.product)
+		newProduct, err := productsRepo.CreateProduct(receivedMessage.Product)
 
 		if err != nil {
-			fmt.Println("[-] Error syncing db - operation create - row", receivedMessage.product)
+			fmt.Println("[-] Error syncing db - operation create - row", receivedMessage.Product)
 		}
 
 		fmt.Println("[+] Success syncing db - operation create - row", newProduct)
 		break
 	case "update":
-		updatedProduct, err := productsRepo.UpdateProduct(receivedMessage.product)
+		updatedProduct, err := productsRepo.UpdateProduct(receivedMessage.Product)
 		if err != nil {
-			fmt.Println("[-] Error syncing db - operation update - row", receivedMessage.product)
+			fmt.Println("[-] Error syncing db - operation update - row", receivedMessage.Product)
 		}
 
 		fmt.Println("[+] Success syncing db - operation update - row", updatedProduct)
@@ -57,8 +58,9 @@ func syncDB(message []byte, dbName string) error {
 func BoSendUpdatedData(status string, product db.Product, whoami string) {
 
 	toSendMessage := SentMessage{
-		product,
-		status,
+		Product:   product,
+		Status:    status,
+		Timestamp: time.Now(),
 	}
 	connection := connect()
 
@@ -67,19 +69,20 @@ func BoSendUpdatedData(status string, product db.Product, whoami string) {
 		log.Panicln("[-] Error marshelling data - products ")
 	}
 
-	go send(connection, "bo-to-ho", jsonData)
+	go send(connection, fmt.Sprintf("%s-to-ho", whoami), jsonData)
 }
 
-func RecvDataFromTheWire(whoami string) {
+func RecvDataFromTheWire(whoami string, updateUi func()) {
 
 	connection := connect()
 
-	queueName := fmt.Sprintf("ho-to-%s", whoami)
+	queueName := fmt.Sprintf("%s-to-ho", whoami)
 	dbName := fmt.Sprintf("%s.sqlite", whoami)
 
 	go recv(connection, queueName, func(message []byte) {
 
 		err := syncDB(message, dbName)
+		updateUi()
 		if err != nil {
 			log.Panicln("[-] Error syncing database")
 		}

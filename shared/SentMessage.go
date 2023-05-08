@@ -1,8 +1,12 @@
 package shared
 
-import "synchro-db/db"
+import (
+	"synchro-db/db"
+ 	"time"
+)
 
 type SentMessage struct {
-	product db.Product
-	status  string `json:"string"`
+	Product db.Product
+	Status  string `json:"string"`
+	Timestamp time.Time `json:"string"`
 }
