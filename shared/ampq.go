@@ -28,7 +28,7 @@ func send(conn *amqp.Connection, queueName string, body []byte) {
 	defer ch.Close()
 	q, err := ch.QueueDeclare(
 		queueName, // name
-		false,     // durable
+		true,      // durable
 		false,     // delete when unused
 		false,     // exclusive
 		false,     // no-wait

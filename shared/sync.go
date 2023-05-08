@@ -32,7 +32,6 @@ func syncDB(message []byte, dbName string) error {
 		if err != nil {
 			fmt.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
 		}
-		break
 	case "create":
 		newProduct, err := productsRepo.CreateProduct(receivedMessage.Product)
 
@@ -41,7 +40,6 @@ func syncDB(message []byte, dbName string) error {
 		}
 
 		fmt.Println("[+] Success syncing db - operation create - row", newProduct)
-		break
 	case "update":
 		updatedProduct, err := productsRepo.UpdateProduct(receivedMessage.Product)
 		if err != nil {
