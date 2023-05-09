@@ -183,6 +183,17 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 
 			})
 		}()
+
+		go shared.OrderProductIntoHeap()
+		go shared.PerformDbOp(func() {
+			fmt.Println("Received new data")
+			tempData := (*productRepo).FindAll()
+			data = ConvertDataToDb(&tempData)
+
+			// Create a table widget for the main body
+			myWindow.Canvas().Refresh(table)
+
+		})
 	}
 
 	// Create an HBox container for the main body

@@ -8,7 +8,13 @@ import (
 	"time"
 )
 
-func syncDB(message []byte, dbName string) error {
+var (
+	productLocalQueu         MinHeap
+	unorderedMessagesChannel = make(chan SentMessage, 1)
+	orderedMessagesChannel   = make(chan int, 1)
+)
+
+func syncDB(receivedMessage SentMessage, dbName string) error {
 	dbConnection, err := db.ConnectToDb(dbName)
 
 	if err != nil {
@@ -16,16 +22,6 @@ func syncDB(message []byte, dbName string) error {
 	}
 
 	productsRepo := db.NewProductSalesRepo(dbConnection)
-
-	var receivedMessage SentMessage
-
-	err = json.Unmarshal(message, &receivedMessage)
-
-	if err != nil {
-		log.Panicln("[-] Error while parsing data from the wire. Check it", message)
-	}
-
-	receivedMessage.Product.ID = 0
 
 	switch receivedMessage.Status {
 	case "delete":
@@ -35,6 +31,7 @@ func syncDB(message []byte, dbName string) error {
 			fmt.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
 		}
 	case "create":
+		receivedMessage.Product.ID = 0
 		fmt.Println("Here inside create")
 		newProduct, err := productsRepo.CreateProduct(receivedMessage.Product)
 
@@ -83,8 +80,40 @@ func RecvDataFromTheWire(whoami string, updateUi func()) {
 	fmt.Println(dbName)
 
 	go recv(connection, queueName, func(message []byte) {
+		var receivedMessage SentMessage
 
-		err := syncDB(message, dbName)
+		err := json.Unmarshal(message, &receivedMessage)
+
+		if err != nil {
+			log.Panicln("[-] Error while parsing data from the wire. Check it", message)
+		}
+
+		unorderedMessagesChannel <- receivedMessage
+
+	})
+
+}
+
+func OrderProductIntoHeap() {
+
+	fmt.Println("Still running, heeere")
+	for {
+		receivedMessage := <-unorderedMessagesChannel
+		fmt.Println("db operation sending a channel")
+		productLocalQueu.Push(receivedMessage)
+		orderedMessagesChannel <- 1
+	}
+}
+
+func PerformDbOp(updateUi func()) {
+
+	for {
+		fmt.Println("db operation waiting for flag")
+		anotherFlag := <-orderedMessagesChannel
+		fmt.Println("Here performing db operation")
+		fmt.Println(anotherFlag, "The end of the pipe is working")
+		receivedMessage := productLocalQueu.Pop()
+		err := syncDB(receivedMessage.(SentMessage), "ho.sqlite")
 		if err != nil {
 			log.Panicln("Error updating db", err)
 		}
@@ -92,8 +121,7 @@ func RecvDataFromTheWire(whoami string, updateUi func()) {
 		if err != nil {
 			log.Panicln("[-] Error syncing database")
 		}
-
-	})
+	}
 
 }
 
@@ -117,5 +145,4 @@ func SendProductsToHO(products []db.Product, whoami string) {
 
 		go send(connection, queueName, jsonData)
 	}
-
 }
