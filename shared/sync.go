@@ -1,3 +1,5 @@
+// package shared is the package that holds all the methods and global variables
+// needed to sync data over the wire without messing it up
 package shared
 
 import (
@@ -6,14 +8,17 @@ import (
 	"log"
 	"synchro-db/db"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 var (
 	productLocalQueu         MinHeap
-	unorderedMessagesChannel = make(chan SentMessage, 1)
-	orderedMessagesChannel   = make(chan int, 1)
+	unorderedMessagesChannel = make(chan SentMessage, 10)
+	orderedMessagesChannel   = make(chan int, 10)
 )
 
+// syncDB is a private function that is responsible of identifying the database operation in the function and performing it
 func syncDB(receivedMessage SentMessage, dbName string) error {
 	dbConnection, err := db.ConnectToDb(dbName)
 
@@ -28,7 +33,7 @@ func syncDB(receivedMessage SentMessage, dbName string) error {
 		_, err := productsRepo.DeleteProduct(int(receivedMessage.Product.ID))
 
 		if err != nil {
-			fmt.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
+			log.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
 		}
 	case "create":
 		receivedMessage.Product.ID = 0
@@ -53,6 +58,7 @@ func syncDB(receivedMessage SentMessage, dbName string) error {
 	return nil
 }
 
+// BoSendUpdatedData notifies the HO of data update
 func BoSendUpdatedData(status string, product db.Product, whoami string) {
 
 	toSendMessage := SentMessage{
@@ -70,14 +76,11 @@ func BoSendUpdatedData(status string, product db.Product, whoami string) {
 	go send(connection, fmt.Sprintf("%s-to-ho", whoami), jsonData)
 }
 
-func RecvDataFromTheWire(whoami string, updateUi func()) {
+func RecvDataFromTheWire(whoami string) {
 
 	connection := connect()
 
 	queueName := fmt.Sprintf("%s-to-ho", whoami)
-	dbName := "ho.sqlite"
-
-	fmt.Println(dbName)
 
 	go recv(connection, queueName, func(message []byte) {
 		var receivedMessage SentMessage
@@ -94,32 +97,46 @@ func RecvDataFromTheWire(whoami string, updateUi func()) {
 
 }
 
+// OrderProductIntoHeap  is our second (goroutine / thread ). It received a new message from from the main thread
+// and organize it inside the heap then notifies the third thread to sync it into the db
 func OrderProductIntoHeap() {
 
-	fmt.Println("Still running, heeere")
+	magenta := color.New(color.FgMagenta).SprintFunc()
+	fmt.Println(magenta("[+] Second thread started workin"))
 	for {
-		receivedMessage := <-unorderedMessagesChannel
-		fmt.Println("db operation sending a channel")
-		productLocalQueu.Push(receivedMessage)
-		orderedMessagesChannel <- 1
+
+		select {
+		case receivedMessage := <-unorderedMessagesChannel:
+			productLocalQueu.Push(receivedMessage)
+			orderedMessagesChannel <- 1
+		default:
+			fmt.Println(magenta("[~] WAITING FOR MORE PRODUCTS TO PUT IN HEAP"))
+			time.Sleep(10 * time.Second)
+		}
 	}
 }
 
+// PerformDbOp when notified of a new message it pops the heap and performs the operation
 func PerformDbOp(updateUi func()) {
 
+	yellow := color.New(color.FgYellow).SprintFunc()
+	fmt.Println(yellow("[+] Third thread working"))
 	for {
-		fmt.Println("db operation waiting for flag")
-		anotherFlag := <-orderedMessagesChannel
-		fmt.Println("Here performing db operation")
-		fmt.Println(anotherFlag, "The end of the pipe is working")
-		receivedMessage := productLocalQueu.Pop()
-		err := syncDB(receivedMessage.(SentMessage), "ho.sqlite")
-		if err != nil {
-			log.Panicln("Error updating db", err)
-		}
-		updateUi()
-		if err != nil {
-			log.Panicln("[-] Error syncing database")
+
+		select {
+		case <-orderedMessagesChannel:
+			receivedMessage := productLocalQueu.Pop()
+			err := syncDB(receivedMessage.(SentMessage), "ho.sqlite")
+			if err != nil {
+				log.Panicln("Error updating db", err)
+			}
+			updateUi()
+			if err != nil {
+				log.Panicln("[-] Error syncing database")
+			}
+		default:
+			fmt.Println(yellow("[~] WAITING FOR MORE DB OPERATIONS"))
+			time.Sleep(10 * time.Second)
 		}
 	}
 
@@ -128,7 +145,6 @@ func PerformDbOp(updateUi func()) {
 func SendProductsToHO(products []db.Product, whoami string) {
 
 	connection := connect()
-
 	queueName := fmt.Sprintf("%s-to-ho", whoami)
 
 	for _, product := range products {
@@ -145,4 +161,9 @@ func SendProductsToHO(products []db.Product, whoami string) {
 
 		go send(connection, queueName, jsonData)
 	}
+}
+
+func TellBOYouReceived() {
+	// Send a message sent with the message to the BO
+
 }

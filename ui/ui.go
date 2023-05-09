@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/fatih/color"
 )
 
 func triggerError(message string, myWindow fyne.Window) {
@@ -107,7 +108,6 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 
 	myApp := app.New()
 
-	fmt.Println("table", tableData)
 	myWindow := myApp.NewWindow("DB Synchronizer " + whoami)
 
 	data := ConvertDataToDb(tableData)
@@ -158,35 +158,12 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 	mainLabel := widget.NewLabel("Welcome to your workspace - " + whoami)
 
 	if whoami == "ho" {
-		go func() {
-
-			shared.RecvDataFromTheWire("bo1", func() {
-				fmt.Println("Received new data")
-				tempData := (*productRepo).FindAll()
-				data = ConvertDataToDb(&tempData)
-
-				// Create a table widget for the main body
-				myWindow.Canvas().Refresh(table)
-
-			})
-		}()
-
-		go func() {
-
-			shared.RecvDataFromTheWire("bo2", func() {
-				fmt.Println("Received new data")
-				tempData := (*productRepo).FindAll()
-				data = ConvertDataToDb(&tempData)
-
-				// Create a table widget for the main body
-				myWindow.Canvas().Refresh(table)
-
-			})
-		}()
-
+		go shared.RecvDataFromTheWire("bo1")
+		go shared.RecvDataFromTheWire("bo2")
 		go shared.OrderProductIntoHeap()
 		go shared.PerformDbOp(func() {
-			fmt.Println("Received new data")
+			green := color.New(color.FgHiGreen).SprintFunc()
+			fmt.Println(green("[!] Updating UI with new data"))
 			tempData := (*productRepo).FindAll()
 			data = ConvertDataToDb(&tempData)
 
@@ -194,8 +171,8 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 			myWindow.Canvas().Refresh(table)
 
 		})
-	}
 
+	}
 	// Create an HBox container for the main body
 	tableCtr := container.NewVScroll(table)
 	tableCtr.SetMinSize(fyne.NewSize(600, 500))

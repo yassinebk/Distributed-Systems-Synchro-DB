@@ -2,9 +2,11 @@ package shared
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/fatih/color"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -90,6 +92,7 @@ func recv(conn *amqp.Connection, queueName string, updatFunc func(message []byte
 		}
 	}()
 
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+	blue := color.New(color.FgBlue).SprintFunc()
+	fmt.Printf(blue(" [*] Waiting for messages from queueu", queueName, " To exit press CTRL+C"))
 	<-forever
 }
