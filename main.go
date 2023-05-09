@@ -11,7 +11,7 @@ func main() {
 	cli := cmd.Setup()
 	err := cli.Run(os.Args)
 	if err != nil {
-		log.Panicln("[-] error launching the app")
+		log.Panicln("[-] error launching the app", err)
 	}
 
 }

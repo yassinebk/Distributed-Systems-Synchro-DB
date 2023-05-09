@@ -32,7 +32,7 @@ func SeedDB(db string) error {
 	for _, p := range products {
 		_, err := productSalesRepo.CreateProduct(p)
 		if err != nil {
-			fmt.Println("Error creating product")
+			fmt.Println("Error creating product", err)
 		}
 	}
 

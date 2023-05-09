@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -23,6 +24,16 @@ func printASCIIArt(*cli.Context) error {
 
 	fmt.Println(cyan(string(content)))
 	return nil
+}
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
 
 func Setup() cli.App {
@@ -52,15 +63,21 @@ func Setup() cli.App {
 		},
 
 		Action: func(ctx *cli.Context) error {
-			whoami := ctx.String("whoami") + ".sqlite"
+			whoami := ctx.String("whoami")
+
+			fmt.Println(whoami)
+			if !contains([]string{"ho", "bo1", "bo2"}, whoami) {
+				return errors.New("whoami argument can only take the following values: `ho`, `bo1`, `bo2`")
+
+			}
 			if ctx.Bool("seed") {
-				err := db.SeedDB(whoami) //
+				err := db.SeedDB(whoami + ".sqlite") //
 				if err != nil {
 					log.Panicln("[-] Error seeding database", err)
 				}
 			}
 
-			dbConnection, err := db.ConnectToDb(whoami) //
+			dbConnection, err := db.ConnectToDb(whoami + ".sqlite") //
 
 			if err != nil {
 				log.Panicln("[-] Error connecting to database", err)

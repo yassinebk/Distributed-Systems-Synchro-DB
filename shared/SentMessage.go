@@ -7,6 +7,6 @@ import (
 
 type SentMessage struct {
 	Product   db.Product
-	Status    string    `json:"string"`
+	Status    string    `json:"status"`
 	Timestamp time.Time `json:"time"`
 }

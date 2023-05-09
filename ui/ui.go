@@ -21,7 +21,7 @@ func triggerError(message string, myWindow fyne.Window) {
 }
 
 func showForm(app *fyne.App, productRepo *db.ProductSalesRepo) {
-	newWindow := (*app).NewWindow("New window")
+	newWindow := (*app).NewWindow("Add product form")
 
 	var (
 		productEntry = widget.NewEntry()
@@ -72,9 +72,9 @@ func showForm(app *fyne.App, productRepo *db.ProductSalesRepo) {
 			qty = uint32(x1)
 			cost = float32(x2)
 			tax = float32(x3)
-			time, err := time.Parse("dd-mm-yyyy", dateEntry.Text)
+			time, err := time.Parse(time.DateOnly, dateEntry.Text)
 			if err != nil {
-				triggerError("Time should be dd-mm-yyyy", newWindow)
+				triggerError("Time should be dd-mm-yyyy"+err.Error(), newWindow)
 				return
 			}
 			newProduct := &db.Product{
@@ -106,7 +106,9 @@ func showForm(app *fyne.App, productRepo *db.ProductSalesRepo) {
 func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSalesRepo) {
 
 	myApp := app.New()
-	myWindow := myApp.NewWindow("DB Synchronizer")
+
+	fmt.Println("table", tableData)
+	myWindow := myApp.NewWindow("DB Synchronizer " + whoami)
 
 	data := ConvertDataToDb(tableData)
 
@@ -123,7 +125,7 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 			o.(*widget.Label).SetText(data[i.Row][i.Col])
 		},
 	)
-	for id, _ := range data[0] {
+	for id := range data[0] {
 		table.SetColumnWidth(id, float32(120))
 	}
 
@@ -135,7 +137,12 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 		notSentProducts := (*productRepo).FindAllNotSent()
 
 		// log.Println("Not sent products", notSentProducts)
-		if len(notSentProducts) > 0 {
+
+		for i := range notSentProducts {
+			notSentProducts[i].Sent = true
+		}
+
+		if whoami != "ho" && len(notSentProducts) > 0 {
 			shared.SendProductsToHO(notSentProducts, whoami)
 		}
 
@@ -148,20 +155,35 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 	)
 
 	// Create a label widget for the main body
-	mainLabel := widget.NewLabel("Welcome to your workspace name")
+	mainLabel := widget.NewLabel("Welcome to your workspace - " + whoami)
 
-	go func() {
+	if whoami == "ho" {
+		go func() {
 
-		shared.RecvDataFromTheWire(whoami, func() {
+			shared.RecvDataFromTheWire("bo1", func() {
+				fmt.Println("Received new data")
+				tempData := (*productRepo).FindAll()
+				data = ConvertDataToDb(&tempData)
 
-			tempData := (*productRepo).FindAll()
-			data = ConvertDataToDb(&tempData)
+				// Create a table widget for the main body
+				myWindow.Canvas().Refresh(table)
 
-			// Create a table widget for the main body
-			myWindow.Canvas().Refresh(table)
+			})
+		}()
 
-		})
-	}()
+		go func() {
+
+			shared.RecvDataFromTheWire("bo2", func() {
+				fmt.Println("Received new data")
+				tempData := (*productRepo).FindAll()
+				data = ConvertDataToDb(&tempData)
+
+				// Create a table widget for the main body
+				myWindow.Canvas().Refresh(table)
+
+			})
+		}()
+	}
 
 	// Create an HBox container for the main body
 	tableCtr := container.NewVScroll(table)

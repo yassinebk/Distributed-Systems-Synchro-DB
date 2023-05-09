@@ -25,6 +25,8 @@ func syncDB(message []byte, dbName string) error {
 		log.Panicln("[-] Error while parsing data from the wire. Check it", message)
 	}
 
+	receivedMessage.Product.ID = 0
+
 	switch receivedMessage.Status {
 	case "delete":
 		_, err := productsRepo.DeleteProduct(int(receivedMessage.Product.ID))
@@ -33,6 +35,7 @@ func syncDB(message []byte, dbName string) error {
 			fmt.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
 		}
 	case "create":
+		fmt.Println("Here inside create")
 		newProduct, err := productsRepo.CreateProduct(receivedMessage.Product)
 
 		if err != nil {
@@ -75,11 +78,16 @@ func RecvDataFromTheWire(whoami string, updateUi func()) {
 	connection := connect()
 
 	queueName := fmt.Sprintf("%s-to-ho", whoami)
-	dbName := fmt.Sprintf("%s.sqlite", whoami)
+	dbName := "ho.sqlite"
+
+	fmt.Println(dbName)
 
 	go recv(connection, queueName, func(message []byte) {
 
 		err := syncDB(message, dbName)
+		if err != nil {
+			log.Panicln("Error updating db", err)
+		}
 		updateUi()
 		if err != nil {
 			log.Panicln("[-] Error syncing database")
