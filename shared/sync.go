@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"synchro-db/db"
 	"time"
 
@@ -61,9 +62,17 @@ func syncDB(receivedMessage SentMessage, dbName string) error {
 // BoSendUpdatedData notifies the HO of data update
 func BoSendUpdatedData(status string, product db.Product, whoami string) {
 
+	site, err := strconv.Atoi(whoami[1:])
+	if err != nil {
+		log.Panicln("[-] Error converting whoami to int")
+	}
+	log.Panicln("site", site)
+	log.Panicln("whoami", whoami)
+
 	toSendMessage := SentMessage{
 		Product:   product,
 		Status:    status,
+		Site:      site,
 		Timestamp: time.Now(),
 	}
 	connection := connect()
@@ -101,6 +110,9 @@ func RecvDataFromTheWire(whoami string) {
 // and organize it inside the heap then notifies the third thread to sync it into the db
 func OrderProductIntoHeap() {
 
+	connection := connect()
+	queueName := "ho-to-bo"
+
 	magenta := color.New(color.FgMagenta).SprintFunc()
 	fmt.Println(magenta("[+] Second thread started workin"))
 	for {
@@ -108,6 +120,15 @@ func OrderProductIntoHeap() {
 		select {
 		case receivedMessage := <-unorderedMessagesChannel:
 			productLocalQueu.Push(receivedMessage)
+
+			receivedMessage.Product.AckReceived = true
+
+			jsonData, err := json.Marshal(&receivedMessage)
+			if err != nil {
+				log.Panicln("[-] Error marshelling data - products ")
+			}
+			go send(connection, queueName+fmt.Sprintf("%d", receivedMessage.Site), jsonData)
+
 			orderedMessagesChannel <- 1
 		default:
 			fmt.Println(magenta("[~] WAITING FOR MORE PRODUCTS TO PUT IN HEAP"))
@@ -147,10 +168,16 @@ func SendProductsToHO(products []db.Product, whoami string) {
 	connection := connect()
 	queueName := fmt.Sprintf("%s-to-ho", whoami)
 
+	site, err := strconv.Atoi(whoami[2:])
+	if err != nil {
+		log.Panicln("[-] Error converting whoami to int")
+	}
+
 	for _, product := range products {
 		toSendMessage := SentMessage{
 			Product:   product,
 			Status:    "create",
+			Site:      site,
 			Timestamp: time.Now(),
 		}
 
@@ -163,7 +190,34 @@ func SendProductsToHO(products []db.Product, whoami string) {
 	}
 }
 
-func TellBOYouReceived() {
-	// Send a message sent with the message to the BO
+func ListenOnAcks(whoami string, productRepo *db.ProductSalesRepo) {
+
+	dbConnection, err := db.ConnectToDb(whoami + ".sqlite") //
+
+	if err != nil {
+		log.Panicln("[-] Error connecting to database", err)
+	}
+
+	productsRepo := db.NewProductSalesRepo(dbConnection)
+
+	connection := connect()
+
+	queueName := "ho-to-bo" + whoami[2:]
+
+	go recv(connection, queueName, func(message []byte) {
+		var receivedMessage SentMessage
+
+		err := json.Unmarshal(message, &receivedMessage)
+
+		if err != nil {
+			log.Panicln("[-] Error while parsing data from the wire. Check it", message)
+		}
+
+		product := receivedMessage.Product
+		product.AckReceived = true
+
+		productsRepo.UpdateProduct(product)
+
+	})
 
 }

@@ -147,6 +147,19 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 			shared.SendProductsToHO(notSentProducts, whoami)
 		}
 
+		// launch thread that executes function F with argument notSentProducts
+		if whoami != "ho" && len(notSentProducts) > 0 {
+			go func() {
+				time.Sleep(5 * time.Second)
+				for i := range notSentProducts {
+					if !notSentProducts[i].AckReceived {
+						notSentProducts[i].Sent = false
+						(*productRepo).UpdateProduct(notSentProducts[i])
+					}
+				}
+			}()
+		}
+
 	})
 
 	// Create a VBox container for the sidebar
@@ -172,8 +185,10 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 			myWindow.Canvas().Refresh(table)
 
 		})
-
+	} else {
+		go shared.ListenOnAcks(whoami, productRepo)
 	}
+
 	// Create an HBox container for the main body
 	tableCtr := container.NewVScroll(table)
 	tableCtr.SetMinSize(fyne.NewSize(600, 500))
