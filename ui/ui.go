@@ -140,6 +140,7 @@ func CreateApp(whoami string, tableData *[]db.Product, productRepo *db.ProductSa
 
 		for i := range notSentProducts {
 			notSentProducts[i].Sent = true
+			(*productRepo).UpdateProduct(notSentProducts[i])
 		}
 
 		if whoami != "ho" && len(notSentProducts) > 0 {
