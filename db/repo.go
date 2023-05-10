@@ -47,6 +47,19 @@ func (p *ProductSalesRepo) FindAllNotSent() []Product {
 	return products
 }
 
+func (p *ProductSalesRepo) FindByExternalIdAndSite(externalID uint, site int) []Product {
+	var products []Product
+	res := p.db.Where("external_id = ? and site = ?", externalID, site).Find(&products)
+
+	// log.Println("[+] p.findAllNotSent - ", res.RowsAffected, "rows affected")
+
+	if res.Error != nil {
+		log.Panicln("[-] p.findAll - Error retrieving products sales from database")
+	}
+
+	return products
+}
+
 func (p *ProductSalesRepo) FindOne(id int) *Product {
 	var product Product
 

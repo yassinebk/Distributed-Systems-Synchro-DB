@@ -71,7 +71,7 @@ func Setup() cli.App {
 
 			}
 			if ctx.Bool("seed") {
-				err := db.SeedDB(whoami + ".sqlite") //
+				err := db.SeedDB(whoami+".sqlite", whoami) //
 				if err != nil {
 					log.Panicln("[-] Error seeding database", err)
 				}

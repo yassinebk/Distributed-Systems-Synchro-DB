@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 )
 
-func SeedDB(db string) error {
+func SeedDB(db string, whoami string) error {
 	dbConnection, err := ConnectToDb(db)
 
 	if err != nil {
@@ -29,7 +30,13 @@ func SeedDB(db string) error {
 		log.Panicln("[-] Error unmarshelling data")
 	}
 
+	site, err := strconv.Atoi(whoami[2:])
+	if err != nil {
+		log.Panicln("[-] Error converting whoami to int")
+	}
+
 	for _, p := range products {
+		p.Site = site
 		_, err := productSalesRepo.CreateProduct(p)
 		if err != nil {
 			fmt.Println("Error creating product", err)

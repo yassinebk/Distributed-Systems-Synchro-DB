@@ -7,8 +7,9 @@ import (
 )
 
 type Product struct {
-	ID uint `gorm:"primaryKey;autoincrement" json:"id"`
-
+	ID          uint           `gorm:"primaryKey;autoincrement" json:"id"`
+	ExternalID  uint           `json:"externalId"`
+	Site        int            `json:"site"`
 	Date        time.Time      `json:"date"`
 	Product     string         `json:"product"`
 	Region      string         `json:"region"`

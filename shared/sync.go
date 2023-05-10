@@ -37,15 +37,20 @@ func syncDB(receivedMessage SentMessage, dbName string) error {
 			log.Println("[-] Error syncing db - operation delete - row", receivedMessage.Product)
 		}
 	case "create":
-		receivedMessage.Product.ID = 0
-		fmt.Println("Here inside create")
-		newProduct, err := productsRepo.CreateProduct(receivedMessage.Product)
+		receivedMessage.Product.ExternalID = receivedMessage.Product.ID
 
-		if err != nil {
-			fmt.Println("[-] Error syncing db - operation create - row", receivedMessage.Product)
+		existingProduct := productsRepo.FindByExternalIdAndSite(receivedMessage.Product.ID, receivedMessage.Site)
+		if len(existingProduct) == 0 {
+			receivedMessage.Product.ID = 0
+			newProduct, err := productsRepo.CreateProduct(receivedMessage.Product)
+			if err != nil {
+				fmt.Println("[-] Error syncing db - operation create - row", receivedMessage.Product)
+			}
+			fmt.Println("[+] Success syncing db - operation create - row", newProduct)
+		} else {
+			fmt.Println("[+] Success syncing db - operation create - row but it was already existing", existingProduct)
 		}
 
-		fmt.Println("[+] Success syncing db - operation create - row", newProduct)
 	case "update":
 		updatedProduct, err := productsRepo.UpdateProduct(receivedMessage.Product)
 		if err != nil {
@@ -214,9 +219,12 @@ func ListenOnAcks(whoami string, productRepo *db.ProductSalesRepo) {
 		}
 
 		product := receivedMessage.Product
-		product.AckReceived = true
 
-		productsRepo.UpdateProduct(product)
+		log.Println("product", product)
+		existingProduct := productsRepo.FindOne(int(product.ID))
+		existingProduct.AckReceived = true
+
+		productsRepo.UpdateProduct(*existingProduct)
 
 	})
 
